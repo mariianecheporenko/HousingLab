@@ -34,6 +34,7 @@ public partial class Housing : Entity
     [Display(Name = "Власник")]
     public int? OwnerId { get; set; }
 
+    public virtual User? Owner { get; set; }
 
     public virtual ICollection<Availability> Availabilities { get; set; } = new List<Availability>();
 

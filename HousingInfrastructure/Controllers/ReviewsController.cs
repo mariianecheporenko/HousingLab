@@ -10,22 +10,23 @@ using HousingInfrastructure;
 
 namespace HousingInfrastructure.Controllers
 {
-    public class HousingsController : Controller
+    public class ReviewsController : Controller
     {
         private readonly HousingContext _context;
 
-        public HousingsController(HousingContext context)
+        public ReviewsController(HousingContext context)
         {
             _context = context;
         }
 
-        // GET: Housings
+        // GET: Reviews
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Housings.ToListAsync());
+            var housingContext = _context.Reviews.Include(r => r.Housing).Include(r => r.User);
+            return View(await housingContext.ToListAsync());
         }
 
-        // GET: Housings/Details/5
+        // GET: Reviews/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -33,43 +34,46 @@ namespace HousingInfrastructure.Controllers
                 return NotFound();
             }
 
-            var housing = await _context.Housings
-                .Include(h => h.Owner)
-                .Include(h => h.Reviews)
-                    .ThenInclude(r => r.User)
-                .Include(h => h.BookingRequests)
+            var review = await _context.Reviews
+                .Include(r => r.Housing)
+                .Include(r => r.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (housing == null)
+            if (review == null)
             {
                 return NotFound();
             }
 
-            return View(housing);
+            //return View(review);
+            return RedirectToAction("Details", "Housings", new { id = review.HousingId });
         }
 
-        // GET: Housings/Create
+        // GET: Reviews/Create
         public IActionResult Create()
         {
+            ViewData["HousingId"] = new SelectList(_context.Housings, "Id", "Address");
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email");
             return View();
         }
 
-        // POST: Housings/Create
+        // POST: Reviews/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Address,City,Price,Rooms,Area,IsAvailable,Description,OwnerId,Id")] Housing housing)
+        public async Task<IActionResult> Create([Bind("UserId,HousingId,Rating,Comment,Id")] Review review)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(housing);
+                _context.Add(review);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            return View(housing);
+            ViewData["HousingId"] = new SelectList(_context.Housings, "Id", "Address", review.HousingId);
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", review.UserId);
+            return View(review);
         }
 
-        // GET: Housings/Edit/5
+        // GET: Reviews/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -77,22 +81,24 @@ namespace HousingInfrastructure.Controllers
                 return NotFound();
             }
 
-            var housing = await _context.Housings.FindAsync(id);
-            if (housing == null)
+            var review = await _context.Reviews.FindAsync(id);
+            if (review == null)
             {
                 return NotFound();
             }
-            return View(housing);
+            ViewData["HousingId"] = new SelectList(_context.Housings, "Id", "Address", review.HousingId);
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", review.UserId);
+            return View(review);
         }
 
-        // POST: Housings/Edit/5
+        // POST: Reviews/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Address,City,Price,Rooms,Area,IsAvailable,Description,OwnerId,Id")] Housing housing)
+        public async Task<IActionResult> Edit(int id, [Bind("UserId,HousingId,Rating,Comment,Id")] Review review)
         {
-            if (id != housing.Id)
+            if (id != review.Id)
             {
                 return NotFound();
             }
@@ -101,12 +107,12 @@ namespace HousingInfrastructure.Controllers
             {
                 try
                 {
-                    _context.Update(housing);
+                    _context.Update(review);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!HousingExists(housing.Id))
+                    if (!ReviewExists(review.Id))
                     {
                         return NotFound();
                     }
@@ -117,10 +123,12 @@ namespace HousingInfrastructure.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(housing);
+            ViewData["HousingId"] = new SelectList(_context.Housings, "Id", "Address", review.HousingId);
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", review.UserId);
+            return View(review);
         }
 
-        // GET: Housings/Delete/5
+        // GET: Reviews/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -128,34 +136,36 @@ namespace HousingInfrastructure.Controllers
                 return NotFound();
             }
 
-            var housing = await _context.Housings
+            var review = await _context.Reviews
+                .Include(r => r.Housing)
+                .Include(r => r.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (housing == null)
+            if (review == null)
             {
                 return NotFound();
             }
 
-            return View(housing);
+            return View(review);
         }
 
-        // POST: Housings/Delete/5
+        // POST: Reviews/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var housing = await _context.Housings.FindAsync(id);
-            if (housing != null)
+            var review = await _context.Reviews.FindAsync(id);
+            if (review != null)
             {
-                _context.Housings.Remove(housing);
+                _context.Reviews.Remove(review);
             }
 
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool HousingExists(int id)
+        private bool ReviewExists(int id)
         {
-            return _context.Housings.Any(e => e.Id == id);
+            return _context.Reviews.Any(e => e.Id == id);
         }
     }
 }

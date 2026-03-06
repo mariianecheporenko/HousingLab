@@ -4,10 +4,10 @@
     ViewData["Title"] = "Details";
 }
 
-<h1>Details</h1>
+<h1>Деталі</h1>
 
 <div>
-    <h4>Housing</h4>
+    <h4>Житло</h4>
     <hr />
     <dl class="row">
         <dt class = "col-sm-2">
@@ -52,14 +52,62 @@
         <dd class = "col-sm-10">
             @Html.DisplayFor(model => model.Description)
         </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.OwnerId)
+        <dt class="col-sm-2">
+            Власник
         </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.OwnerId)
+        <dd class="col-sm-10">
+            @Model.Owner?.Name
         </dd>
     </dl>
+    <a asp-controller="BookingRequests"
+       asp-action="Create"
+       asp-route-housingId="@Model.Id"
+       class="btn btn-primary">
+        Забронювати
+    </a>
 </div>
+
+<hr />
+<h3>Відгуки</h3>
+@if (User.Identity != null && User.Identity.IsAuthenticated)
+{
+    <a asp-controller="Reviews"
+       asp-action="Create"
+       asp-route-housingId="@Model.Id"
+       class="btn btn-success mb-3">
+        Залишити відгук
+    </a>
+}
+else
+{
+    <p>
+        <a asp-area="Identity" asp-page="/Account/Login">
+            Увійдіть
+        </a>
+        щоб залишити відгук
+    </p>
+}
+
+@if (Model.Reviews != null && Model.Reviews.Any())
+{
+    foreach (var review in Model.Reviews)
+    {
+        <div class="card mb-3 p-3">
+            <b>@review.User?.Name</b>
+            <br />
+
+            Рейтинг: @review.Rating
+            <br />
+
+            @review.Comment
+        </div>
+    }
+}
+else
+{
+    <p>Ще немає відгуків.</p>
+}
+
 <div>
     <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
     <a asp-action="Index">Back to List</a>
