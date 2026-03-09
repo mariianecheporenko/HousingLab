@@ -59,10 +59,23 @@ namespace HousingInfrastructure.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("UserId,HousingId,DateFrom,DateTo,Status,Id")] BookingRequest bookingRequest)
+        public async Task<IActionResult> Create([Bind("UserId,HousingId,DateFrom,DateTo,Id")] BookingRequest bookingRequest)
         {
+            DateOnly today = DateOnly.FromDateTime(DateTime.Today);
+            if (bookingRequest.DateFrom < today)
+            {
+                ModelState.AddModelError("DateFrom", "Start date cannot be earlier than today.");
+            }
+
+            if (bookingRequest.DateTo <= bookingRequest.DateFrom)
+            {
+                ModelState.AddModelError("DateTo", "End date must be after start date.");
+            }
+
             if (ModelState.IsValid)
             {
+                bookingRequest.Status = "Pending";
+
                 _context.Add(bookingRequest);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
@@ -95,11 +108,23 @@ namespace HousingInfrastructure.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("UserId,HousingId,DateFrom,DateTo,Status,Id")] BookingRequest bookingRequest)
+        public async Task<IActionResult> Edit(int id, [Bind("UserId,HousingId,DateFrom,DateTo,Id")] BookingRequest bookingRequest)
         {
             if (id != bookingRequest.Id)
             {
                 return NotFound();
+            }
+
+            DateOnly today = DateOnly.FromDateTime(DateTime.Today);
+
+            if (bookingRequest.DateFrom < today)
+            {
+                ModelState.AddModelError("DateFrom", "Start date cannot be earlier than today.");
+            }
+
+            if (bookingRequest.DateTo <= bookingRequest.DateFrom)
+            {
+                ModelState.AddModelError("DateTo", "End date must be after start date.");
             }
 
             if (ModelState.IsValid)

@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace HousingDomain.Models;
 
 public partial class User : Entity
 {
-    public string Email { get; set; } = null;
+    [Required]
+    [Display(Name = "Електронна пошта")]
+    public string Email { get; set; } = null!;
 
     public string Name { get; set; } = null!;
 
