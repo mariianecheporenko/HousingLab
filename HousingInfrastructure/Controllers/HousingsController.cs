@@ -34,10 +34,11 @@ namespace HousingInfrastructure.Controllers
             }
 
             var housing = await _context.Housings
+                .Include(h => h.BookingRequests)
+                .ThenInclude(br => br.User)
                 .Include(h => h.Owner)
                 .Include(h => h.Reviews)
-                    .ThenInclude(r => r.User)
-                .Include(h => h.BookingRequests)
+                .ThenInclude(r => r.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (housing == null)
             {

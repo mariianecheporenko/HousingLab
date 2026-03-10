@@ -16,6 +16,10 @@ public partial class User : Entity
 
     public string Gender { get; set; } = null!;
 
+    public string Role { get; set; } = "User";
+
+    public string Username { get; set; } = null!;
+    public string Phone { get; set; } = null!;
     public virtual ICollection<BookingRequest> BookingRequests { get; set; } = new List<BookingRequest>();
 
     public virtual Profile? Profile { get; set; }

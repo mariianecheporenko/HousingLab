@@ -59,15 +59,35 @@
             @Model.Owner?.Name
         </dd>
     </dl>
-    <a asp-controller="BookingRequests"
-       asp-action="Create"
-       asp-route-housingId="@Model.Id"
-       class="btn btn-primary">
-        Забронювати
-    </a>
 </div>
 
+<h3>Booking Requests</h3>
+
+@if (Model.BookingRequests.Any())
+{
+    <ul>
+        @foreach (var request in Model.BookingRequests)
+        {
+            <li>
+                @request.User.Name (@request.User.Email)
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <p>No requests yet.</p>
+}
+
+<a asp-controller="BookingRequests"
+   asp-action="Create"
+   asp-route-housingId="@Model.Id"
+   class="btn btn-primary">
+    Забронювати
+</a>
+
 <hr />
+
 <h3>Відгуки</h3>
 @if (User.Identity != null && User.Identity.IsAuthenticated)
 {
