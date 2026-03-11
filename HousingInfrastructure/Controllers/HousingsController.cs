@@ -22,7 +22,8 @@ namespace HousingInfrastructure.Controllers
         // GET: Housings
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Housings.ToListAsync());
+            var housingContext = _context.Housings.Include(h => h.Owner);
+            return View(await housingContext.ToListAsync());
         }
 
         // GET: Housings/Details/5
