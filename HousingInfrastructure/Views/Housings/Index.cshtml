@@ -58,8 +58,8 @@
                 @Html.DisplayFor(modelItem => item.Area)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.IsAvailable)
-            </td>
+                    @(item.IsAvailable == true ? "Доступно" : item.IsAvailable == false ? "Недоступно" : "Не вказано")
+                </td>
             <td>
                 @Html.DisplayFor(modelItem => item.Description)
             </td>

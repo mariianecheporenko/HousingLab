@@ -44,7 +44,7 @@
             @Html.DisplayNameFor(model => model.IsAvailable)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.IsAvailable)
+            @(Model.IsAvailable == true ? "Доступно" : Model.IsAvailable == false ? "Недоступно" : "Не вказано")
         </dd>
         <dt class = "col-sm-2">
             @Html.DisplayNameFor(model => model.Description)

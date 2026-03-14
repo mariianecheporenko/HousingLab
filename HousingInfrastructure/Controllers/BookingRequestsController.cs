@@ -22,6 +22,7 @@ namespace HousingInfrastructure.Controllers
         // GET: BookingRequests
         public async Task<IActionResult> Index()
         {
+            await SyncStatusesAsync();
             var housingContext = _context.BookingRequests.Include(b => b.Housing).Include(b => b.User);
             return View(await housingContext.ToListAsync());
         }
@@ -33,6 +34,8 @@ namespace HousingInfrastructure.Controllers
             {
                 return NotFound();
             }
+
+            await SyncStatusesAsync();
 
             var bookingRequest = await _context.BookingRequests
                 .Include(b => b.Housing)
@@ -47,10 +50,12 @@ namespace HousingInfrastructure.Controllers
         }
 
         // GET: BookingRequests/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["HousingId"] = new SelectList(_context.Housings, "Id", "Address");
+            await SyncStatusesAsync();
+            ViewData["HousingId"] = new SelectList(_context.Housings.Where(h => h.IsAvailable == true), "Id", "Address"); 
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email");
+           
             return View();
         }
 
@@ -74,13 +79,14 @@ namespace HousingInfrastructure.Controllers
 
             if (ModelState.IsValid)
             {
-                bookingRequest.Status = "Pending";
-
+                bookingRequest.Status = GetBookingStatus(bookingRequest, today);
                 _context.Add(bookingRequest);
                 await _context.SaveChangesAsync();
+
+                await SyncStatusesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["HousingId"] = new SelectList(_context.Housings, "Id", "Address", bookingRequest.HousingId);
+            ViewData["HousingId"] = new SelectList(_context.Housings.Where(h => h.IsAvailable == true), "Id", "Address", bookingRequest.HousingId); 
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", bookingRequest.UserId);
             return View(bookingRequest);
         }
@@ -92,6 +98,8 @@ namespace HousingInfrastructure.Controllers
             {
                 return NotFound();
             }
+
+            await SyncStatusesAsync();
 
             var bookingRequest = await _context.BookingRequests.FindAsync(id);
             if (bookingRequest == null)
@@ -131,8 +139,11 @@ namespace HousingInfrastructure.Controllers
             {
                 try
                 {
+                    bookingRequest.Status = GetBookingStatus(bookingRequest, today);
+
                     _context.Update(bookingRequest);
                     await _context.SaveChangesAsync();
+                    await SyncStatusesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -159,6 +170,7 @@ namespace HousingInfrastructure.Controllers
             {
                 return NotFound();
             }
+            await SyncStatusesAsync();
 
             var bookingRequest = await _context.BookingRequests
                 .Include(b => b.Housing)
@@ -184,8 +196,64 @@ namespace HousingInfrastructure.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await SyncStatusesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+        private async Task SyncStatusesAsync()
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var bookings = await _context.BookingRequests.ToListAsync();
+            var statusChanged = false;
+
+            foreach (var booking in bookings)
+            {
+                var calculatedStatus = GetBookingStatus(booking, today);
+                if (booking.Status != calculatedStatus)
+                {
+                    booking.Status = calculatedStatus;
+                    statusChanged = true;
+                }
+            }
+
+            var occupiedHousingIds = bookings
+                .Where(b => b.DateFrom <= today && b.DateTo >= today)
+                .Select(b => b.HousingId)
+                .Distinct()
+                .ToHashSet();
+
+            var housings = await _context.Housings.ToListAsync();
+            foreach (var housing in housings)
+            {
+                var shouldBeAvailable = !occupiedHousingIds.Contains(housing.Id);
+                if (housing.IsAvailable != shouldBeAvailable)
+                {
+                    housing.IsAvailable = shouldBeAvailable;
+                    statusChanged = true;
+                }
+            }
+
+            if (statusChanged)
+            {
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        private static string GetBookingStatus(BookingRequest booking, DateOnly today)
+        {
+            if (booking.DateTo < today)
+            {
+                return "Expired";
+            }
+
+            if (booking.DateFrom > today)
+            {
+                return "Scheduled";
+            }
+
+            return "Active";
+        }
+
 
         private bool BookingRequestExists(int id)
         {
