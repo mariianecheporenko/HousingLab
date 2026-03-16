@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HousingDomain.Models;
 
 public partial class Profile : Entity
 {
+    [Column("User_Id")]
     public int UserId { get; set; }
 
     public string NoiseLevel { get; set; } = null!;

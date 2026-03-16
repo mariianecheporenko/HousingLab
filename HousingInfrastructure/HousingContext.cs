@@ -101,6 +101,7 @@ public partial class HousingContext : DbContext
 
         modelBuilder.Entity<Profile>(entity =>
         {
+            entity.ToTable("Profiles");
             entity.HasKey(e => e.Id).HasName("Profiles_pkey");
 
             entity.HasIndex(e => e.UserId, "unique_user_profile").IsUnique();
@@ -118,9 +119,8 @@ public partial class HousingContext : DbContext
             entity.Property(e => e.Smoking).HasColumnType("character varying");
             entity.Property(e => e.PreferredGender)
                 .HasColumnType("character varying")
-                .HasColumnName("Preferred_gender");
+                .HasColumnName("PreferredGender");
             entity.Property(e => e.UserId).HasColumnName("User_Id");
-            entity.Property(e => e.UserId).HasColumnName("User_id");
 
             entity.HasOne(d => d.User).WithOne(p => p.Profile)
                 .HasForeignKey<Profile>(d => d.UserId)
