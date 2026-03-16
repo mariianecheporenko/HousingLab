@@ -1,12 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using HousingDomain.Models;
+using HousingInfrastructure;
+using HousingInfrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using HousingDomain.Models;
-using HousingInfrastructure;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.ConstrainedExecution;
+using System.Threading.Tasks;
 
 namespace HousingInfrastructure.Controllers
 {
@@ -41,13 +43,21 @@ namespace HousingInfrastructure.Controllers
                 return NotFound();
             }
 
+            var profile = await EnsureProfileAsync(user);
+            await BuildCompatibilityData(profile, user.Id);
+
             return View(user);
         }
 
         // GET: Users/Create
         public IActionResult Create()
         {
-            return View();
+            return View(new User
+            {
+                Role = "Renter",
+                IsOwnerApproved = false,
+                WantsToBeOwner = false
+            });
         }
 
         // POST: Users/Create
@@ -55,13 +65,19 @@ namespace HousingInfrastructure.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Email,Name,BirthDate,Gender,Id")] User user)
+        public async Task<IActionResult> Create([Bind("Email,Name,BirthDate,Gender,WantsToBeOwner,Id")] User user)
         {
             if (ModelState.IsValid)
             {
+                user.Role = user.WantsToBeOwner ? "OwnerCandidate" : "Renter";
+                user.IsOwnerApproved = false;
                 _context.Add(user);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                var profile = CreateDefaultProfile(user.Id);
+                _context.Profiles.Add(profile);
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction(nameof(Details), new { id = user.Id });
             }
             return View(user);
         }
@@ -87,7 +103,7 @@ namespace HousingInfrastructure.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Email,Name,BirthDate,Gender,Id")] User user)
+        public async Task<IActionResult> Edit(int id, [Bind("Email,Name,BirthDate,Gender,WantsToBeOwner,IsOwnerApproved,Role,Id")] User user)
         {
             if (id != user.Id)
             {
@@ -98,6 +114,20 @@ namespace HousingInfrastructure.Controllers
             {
                 try
                 {
+                    if (user.WantsToBeOwner && user.IsOwnerApproved)
+                    {
+                        user.Role = "Owner";
+                    }
+                    else if (user.WantsToBeOwner)
+                    {
+                        user.Role = "OwnerCandidate";
+                    }
+                    else
+                    {
+                        user.Role = "Renter";
+                        user.IsOwnerApproved = false;
+                    }
+
                     _context.Update(user);
                     await _context.SaveChangesAsync();
                 }
@@ -115,6 +145,26 @@ namespace HousingInfrastructure.Controllers
                 return RedirectToAction(nameof(Index));
             }
             return View(user);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveOwner(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            if (user.WantsToBeOwner)
+            {
+                user.IsOwnerApproved = true;
+                user.Role = "Owner";
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         // GET: Users/Delete/5
@@ -150,9 +200,63 @@ namespace HousingInfrastructure.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        private async Task<Profile> EnsureProfileAsync(User user)
+        {
+            if (user.Profile != null)
+            {
+                return user.Profile;
+            }
+
+            var profile = CreateDefaultProfile(user.Id);
+            _context.Profiles.Add(profile);
+            await _context.SaveChangesAsync();
+            user.Profile = profile;
+            return profile;
+        }
+
+        private async Task BuildCompatibilityData(Profile me, int currentUserId)
+        {
+            var others = await _context.Profiles
+                .Include(p => p.User)
+                .Where(p => p.UserId != currentUserId)
+                .ToListAsync();
+
+            var compatibility = others
+                .Select(other => new CompatibilityResult
+                {
+                    UserId = other.UserId,
+                    UserName = other.User.Name,
+                    UserEmail = other.User.Email,
+                    Score = CompatibilityService.Calculate(me, other)
+                })
+                .OrderByDescending(x => x.Score)
+                .ToList();
+
+            ViewBag.Compatibility = compatibility;
+        }
+
+        private static Profile CreateDefaultProfile(int userId) => new()
+        {
+            UserId = userId,
+            NoiseLevel = "Medium",
+            SleepMode = "Flexible",
+            Pets = false,
+            Guests = "Sometimes",
+            CleanLevel = "Medium",
+            Smoking = "No",
+            PreferredGender = "Any"
+        };
+
         private bool UserExists(int id)
         {
             return _context.Users.Any(e => e.Id == id);
+        }
+        public class CompatibilityResult
+        {
+            public int UserId { get; set; }
+            public string UserName { get; set; } = string.Empty;
+            public string UserEmail { get; set; } = string.Empty;
+            public int Score { get; set; }
         }
     }
 }

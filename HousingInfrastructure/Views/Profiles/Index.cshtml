@@ -28,6 +28,12 @@
                 @Html.DisplayNameFor(model => model.CleanLevel)
             </th>
             <th>
+                @Html.DisplayNameFor(model => model.Smoking)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PreferredGender)
+            </th>
+            <th>
                 @Html.DisplayNameFor(model => model.User)
             </th>
             <th></th>
@@ -51,6 +57,12 @@
             <td>
                 @Html.DisplayFor(modelItem => item.CleanLevel)
             </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Smoking)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.PreferredGender)
+                </td>
             <td>
                 @Html.DisplayFor(modelItem => item.User.Email)
             </td>

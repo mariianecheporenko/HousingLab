@@ -32,8 +32,23 @@
                 <input asp-for="Gender" class="form-control" />
                 <span asp-validation-for="Gender" class="text-danger"></span>
             </div>
+            <div class="form-group form-check mt-2">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="WantsToBeOwner" /> Хоче здавати житло
+                </label>
+            </div>
+            <div class="form-group form-check mt-1">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="IsOwnerApproved" /> Підтверджено як власника
+                </label>
+            </div>
+            <div class="form-group mt-2">
+                <label asp-for="Role" class="control-label"></label>
+                <input asp-for="Role" class="form-control" readonly />
+            </div>
+
             <input type="hidden" asp-for="Id" />
-            <div class="form-group">
+            <div class="form-group mt-3">
                 <input type="submit" value="Save" class="btn btn-primary" />
             </div>
         </form>

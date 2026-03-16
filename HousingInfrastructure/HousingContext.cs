@@ -115,6 +115,11 @@ public partial class HousingContext : DbContext
             entity.Property(e => e.SleepMode)
                 .HasColumnType("character varying")
                 .HasColumnName("Sleep_mode");
+            entity.Property(e => e.Smoking).HasColumnType("character varying");
+            entity.Property(e => e.PreferredGender)
+                .HasColumnType("character varying")
+                .HasColumnName("Preferred_gender");
+            entity.Property(e => e.UserId).HasColumnName("User_Id");
             entity.Property(e => e.UserId).HasColumnName("User_id");
 
             entity.HasOne(d => d.User).WithOne(p => p.Profile)
@@ -148,7 +153,11 @@ public partial class HousingContext : DbContext
             entity.HasKey(e => e.Id).HasName("Users_pkey");
 
             entity.Property(e => e.Gender).HasMaxLength(6);
+            entity.Property(e => e.IsOwnerApproved).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(50);
+            entity.Property(e => e.Role)
+                .HasMaxLength(30)
+                .HasDefaultValue("Renter");
         });
 
         OnModelCreatingPartial(modelBuilder);

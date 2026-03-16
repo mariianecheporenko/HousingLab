@@ -17,5 +17,10 @@ public partial class Profile : Entity
 
     public string CleanLevel { get; set; } = null!;
 
+    public string Smoking { get; set; } = null!;
+
+    public string PreferredGender { get; set; } = null!;
+
+
     public virtual User User { get; set; } = null!;
 }

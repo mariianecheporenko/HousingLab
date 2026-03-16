@@ -16,6 +16,14 @@ public partial class User : Entity
 
     public string Gender { get; set; } = null!;
 
+    [Display(Name = "Хоче здавати житло")] 
+    public bool WantsToBeOwner { get; set; }
+
+    [Display(Name = "Підтверджений власник")]
+    public bool IsOwnerApproved { get; set; } = false!;
+
+    public string Role { get; set; } = null!;
+
     public virtual ICollection<BookingRequest> BookingRequests { get; set; } = new List<BookingRequest>();
 
     public virtual Profile? Profile { get; set; }

@@ -55,6 +55,7 @@ namespace HousingInfrastructure.Controllers
         public IActionResult Create()
         {
             SetCitiesSelectList();
+            SetOwnersSelectList();
             return View();
         }
 
@@ -65,6 +66,17 @@ namespace HousingInfrastructure.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Address,City,Price,Rooms,Area,IsAvailable,Description,OwnerId,Id")] Housing housing)
         {
+            if (housing.OwnerId.HasValue)
+            {
+                var ownerAllowed = await _context.Users.AnyAsync(u =>
+                    u.Id == housing.OwnerId.Value && u.WantsToBeOwner && u.IsOwnerApproved);
+
+                if (!ownerAllowed)
+                {
+                    ModelState.AddModelError("OwnerId", "Житло може додавати лише підтверджений власник.");
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(housing);
@@ -72,6 +84,7 @@ namespace HousingInfrastructure.Controllers
                 return RedirectToAction(nameof(Index));
             }
             SetCitiesSelectList(housing.City);
+            SetOwnersSelectList(housing.OwnerId);
             return View(housing);
         }
 
@@ -89,6 +102,7 @@ namespace HousingInfrastructure.Controllers
                 return NotFound();
             }
             SetCitiesSelectList(housing.City);
+            SetOwnersSelectList(housing.OwnerId);
             return View(housing);
         }
 
@@ -102,6 +116,17 @@ namespace HousingInfrastructure.Controllers
             if (id != housing.Id)
             {
                 return NotFound();
+            }
+
+            if (housing.OwnerId.HasValue)
+            {
+                var ownerAllowed = await _context.Users.AnyAsync(u =>
+                    u.Id == housing.OwnerId.Value && u.WantsToBeOwner && u.IsOwnerApproved);
+
+                if (!ownerAllowed)
+                {
+                    ModelState.AddModelError("OwnerId", "Житло може бути прив'язане лише до підтвердженого власника.");
+                }
             }
 
             if (ModelState.IsValid)
@@ -124,8 +149,10 @@ namespace HousingInfrastructure.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(housing);
             SetCitiesSelectList(housing.City);
+            SetOwnersSelectList(housing.OwnerId);
+            return View(housing);
+
         }
 
         // GET: Housings/Delete/5
@@ -174,6 +201,20 @@ namespace HousingInfrastructure.Controllers
                 await _context.SaveChangesAsync();
             }
         }
+        private void SetOwnersSelectList(int? selectedOwnerId = null)
+        {
+            var owners = _context.Users
+                .Where(u => u.WantsToBeOwner && u.IsOwnerApproved)
+                .Select(u => new
+                {
+                    u.Id,
+                    Display = $"{u.Name} ({u.Email})"
+                })
+                .ToList();
+
+            ViewBag.OwnerId = new SelectList(owners, "Id", "Display", selectedOwnerId);
+        }
+
 
         private void SetCitiesSelectList(string? selectedCity = null)
         {

@@ -42,6 +42,16 @@
                 <span asp-validation-for="CleanLevel" class="text-danger"></span>
             </div>
             <div class="form-group">
+                <label asp-for="Smoking" class="control-label"></label>
+                <input asp-for="Smoking" class="form-control" />
+                <span asp-validation-for="Smoking" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PreferredGender" class="control-label"></label>
+                <input asp-for="PreferredGender" class="form-control" />
+                <span asp-validation-for="PreferredGender" class="text-danger"></span>
+            </div>
+            <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />
             </div>
         </form>

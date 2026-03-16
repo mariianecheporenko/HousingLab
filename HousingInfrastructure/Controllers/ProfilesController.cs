@@ -46,28 +46,51 @@ namespace HousingInfrastructure.Controllers
         }
 
         // GET: Profiles/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create(int? userId)
         {
+            if (userId.HasValue)
+            {
+                var existing = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == userId.Value);
+                if (existing != null)
+                {
+                    return RedirectToAction(nameof(Edit), new { id = existing.Id });
+                }
+
+                var user = await _context.Users.FindAsync(userId.Value);
+                if (user == null)
+                {
+                    return NotFound();
+                }
+
+                var profile = CreateDefaultProfile(user.Id);
+                ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", user.Id);
+                return View(profile);
+            }
+
+
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email");
-            return View();
+            return View(CreateDefaultProfile());
         }
 
-        // POST: Profiles/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("UserId,NoiseLevel,SleepMode,Pets,Guests,CleanLevel,Id")] Profile profile)
+        public async Task<IActionResult> Create([Bind("UserId,NoiseLevel,SleepMode,Pets,Guests,CleanLevel,Smoking,PreferredGender,Id")] Profile profile)
         {
+            if (await _context.Profiles.AnyAsync(p => p.UserId == profile.UserId && p.Id != profile.Id))
+            {
+                ModelState.AddModelError("UserId", "Для цього користувача вже існує профіль.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(profile);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Details", "Users", new { id = profile.UserId });
             }
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", profile.UserId);
             return View(profile);
         }
+
 
         // GET: Profiles/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -91,11 +114,15 @@ namespace HousingInfrastructure.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("UserId,NoiseLevel,SleepMode,Pets,Guests,CleanLevel,Id")] Profile profile)
+        public async Task<IActionResult> Edit(int id, [Bind("UserId,NoiseLevel,SleepMode,Pets,Guests,CleanLevel,Smoking,PreferredGender,Id")] Profile profile)
         {
             if (id != profile.Id)
             {
                 return NotFound();
+            }
+            if (await _context.Profiles.AnyAsync(p => p.UserId == profile.UserId && p.Id != profile.Id))
+            {
+                ModelState.AddModelError("UserId", "Для цього користувача вже існує профіль.");
             }
 
             if (ModelState.IsValid)
@@ -116,7 +143,7 @@ namespace HousingInfrastructure.Controllers
                         throw;
                     }
                 }
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Details", "Users", new { id = profile.UserId });
             }
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", profile.UserId);
             return View(profile);
@@ -155,6 +182,17 @@ namespace HousingInfrastructure.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+        private static Profile CreateDefaultProfile(int userId = 0) => new()
+        {
+            UserId = userId,
+            NoiseLevel = "Medium",
+            SleepMode = "Flexible",
+            Pets = false,
+            Guests = "Sometimes",
+            CleanLevel = "Medium",
+            Smoking = "No",
+            PreferredGender = "Any"
+        };
 
         private bool ProfileExists(int id)
         {
