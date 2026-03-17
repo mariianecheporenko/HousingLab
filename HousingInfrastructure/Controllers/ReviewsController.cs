@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using HousingDomain.Models;
 using HousingInfrastructure;
 
@@ -60,12 +61,27 @@ namespace HousingInfrastructure.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("UserId,HousingId,Rating,Comment,Id")] Review review)
+        public async Task<IActionResult> Create([Bind("UserId,HousingId,Rating,Comment")] Review review)
         {
             if (ModelState.IsValid)
             {
+                review.Id = default;
                 _context.Add(review);
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx
+                    && pgEx.SqlState == PostgresErrorCodes.UniqueViolation
+                    && (pgEx.ConstraintName == "Reviews_pkey" || pgEx.ConstraintName == "reviews_pkey"))
+                {
+                    await _context.Database.ExecuteSqlRawAsync(@"SELECT setval(
+                        pg_get_serial_sequence('reviews', 'id'),
+                        COALESCE((SELECT MAX(id) FROM reviews), 0) + 1,
+                        false)");
+
+                    await _context.SaveChangesAsync();
+                }
                 return RedirectToAction(nameof(Index));
             }
             ViewData["HousingId"] = new SelectList(_context.Housings, "Id", "Address", review.HousingId);
