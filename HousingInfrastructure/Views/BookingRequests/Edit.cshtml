@@ -1,53 +1,54 @@
 ﻿@model HousingDomain.Models.BookingRequest
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Редагування бронювання";
 }
 
-<h1>Edit</h1>
-
-<h4>BookingRequest</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="UserId" class="control-label"></label>
-                <select asp-for="UserId" class="form-control" asp-items="ViewBag.UserId"></select>
-                <span asp-validation-for="UserId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="HousingId" class="control-label"></label>
-                <select asp-for="HousingId" class="form-control" asp-items="ViewBag.HousingId"></select>
-                <span asp-validation-for="HousingId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="DateFrom" class="control-label"></label>
-                <input asp-for="DateFrom" class="form-control" />
-                <span asp-validation-for="DateFrom" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="DateTo" class="control-label"></label>
-                <input asp-for="DateTo" class="form-control" />
-                <span asp-validation-for="DateTo" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Status" class="control-label"></label>
-                <input asp-for="Status" class="form-control" />
-                <span asp-validation-for="Status" class="text-danger"></span>
-            </div>
-            <input type="hidden" asp-for="Id" />
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
-        </form>
+<section class="romance-form-card">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+            <h1 class="h3 mb-1">Оновити бронювання</h1>
+            <p class="text-muted mb-0">Підкоригуй дати або житло</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">До списку бронювань</a>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
+<form asp-action="Edit" class="row g-3">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="col-md-6">
+            <label asp-for="UserId" class="form-label"></label>
+            <select asp-for="UserId" class="form-select" asp-items="ViewBag.UserId"></select>
+            <span asp-validation-for="UserId" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="HousingId" class="form-label"></label>
+            <select asp-for="HousingId" class="form-select" asp-items="ViewBag.HousingId"></select>
+            <span asp-validation-for="HousingId" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="DateFrom" class="form-label"></label>
+            <input asp-for="DateFrom" class="form-control" placeholder="Наприклад: 2026-04-15" />
+            <div class="form-text">Формат дати: рррр-мм-дд.</div>
+            <span asp-validation-for="DateFrom" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="DateTo" class="form-label"></label>
+            <input asp-for="DateTo" class="form-control" placeholder="Наприклад: 2026-04-30" />
+            <div class="form-text">Кінцева дата має бути пізніше за дату початку.</div>
+            <span asp-validation-for="DateTo" class="text-danger"></span>
+        </div>
+
+        <input type="hidden" asp-for="Id" />
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Зберегти зміни</button>
+        </div>
+    </form>
+</section>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

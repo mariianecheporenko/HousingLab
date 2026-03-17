@@ -24,8 +24,8 @@ public partial class BookingRequest : Entity
     public string? Status { get; set; }
 
     [Display(Name = "Житло")]
-    public virtual Housing Housing { get; set; } = null!;
+    public virtual Housing? Housing { get; set; }
 
     [Display(Name = "Користувач")]
-    public virtual User User { get; set; } = null!;
+    public virtual User? User { get; set; }
 }

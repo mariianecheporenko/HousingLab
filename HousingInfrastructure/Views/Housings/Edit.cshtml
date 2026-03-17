@@ -1,73 +1,85 @@
 ﻿@model HousingDomain.Models.Housing
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Редагування помешкання";
 }
 
-<h1>Edit</h1>
-
-<h4>Housing</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="Address" class="control-label"></label>
-                <input asp-for="Address" class="form-control" />
-                <span asp-validation-for="Address" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="City" class="control-label"></label>
-                <input asp-for="City" class="form-control" list="cities-list" placeholder="Почніть вводити місто" />
-                <datalist id="cities-list">
-                    @foreach (var city in (IEnumerable<string>)ViewBag.Cities)
-                    {
-                        <option value="@city"></option>
-                    }
-                </datalist>
-                <span asp-validation-for="City" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Price" class="control-label"></label>
-                <input asp-for="Price" class="form-control" />
-                <span asp-validation-for="Price" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Rooms" class="control-label"></label>
-                <input asp-for="Rooms" class="form-control" />
-                <span asp-validation-for="Rooms" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Area" class="control-label"></label>
-                <input asp-for="Area" class="form-control" />
-                <span asp-validation-for="Area" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="IsAvailable" class="control-label"></label>
-                <input asp-for="IsAvailable" class="form-control" />
-                <span asp-validation-for="IsAvailable" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Description" class="control-label"></label>
-                <input asp-for="Description" class="form-control" />
-                <span asp-validation-for="Description" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="OwnerId" class="control-label"></label>
-                <select asp-for="OwnerId" class="form-control" asp-items="ViewBag.OwnerId"></select>                <span asp-validation-for="OwnerId" class="text-danger"></span>
-            </div>
-            <input type="hidden" asp-for="Id" />
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
-        </form>
+<section class="romance-form-card">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+            <h1 class="h3 mb-1">Редагування житла</h1>
+            <p class="text-muted mb-0">Онови параметри профілю помешкання.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">До каталогу</a>
     </div>
-</div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
+    <form asp-action="Edit" class="row g-3">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="col-md-6">
+            <label asp-for="Address" class="form-label"></label>
+            <input asp-for="Address" class="form-control" />
+            <span asp-validation-for="Address" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="City" class="form-label"></label>
+            <input asp-for="City" class="form-control" list="cities-list" placeholder="Почніть вводити місто" />
+            <datalist id="cities-list">
+                @foreach (var city in (IEnumerable<string>)ViewBag.Cities)
+                {
+                    <option value="@city"></option>
+                }
+            </datalist>
+            <span asp-validation-for="City" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="Price" class="form-label"></label>
+            <input asp-for="Price" class="form-control" />
+            <span asp-validation-for="Price" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="Rooms" class="form-label"></label>
+            <input asp-for="Rooms" class="form-control" />
+            <span asp-validation-for="Rooms" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="Area" class="form-label"></label>
+            <input asp-for="Area" class="form-control" />
+            <span asp-validation-for="Area" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="IsAvailable" class="form-label"></label>
+            <select asp-for="IsAvailable" class="form-select">
+                <option value="">Не вказано</option>
+                <option value="true">Доступно</option>
+                <option value="false">Недоступно</option>
+            </select>
+            <span asp-validation-for="IsAvailable" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="OwnerId" class="form-label"></label>
+            <select asp-for="OwnerId" class="form-select" asp-items="ViewBag.OwnerId"></select>
+            <span asp-validation-for="OwnerId" class="text-danger"></span>
+        </div>
+
+        <div class="col-12">
+            <label asp-for="Description" class="form-label"></label>
+            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <input type="hidden" asp-for="Id" />
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Зберегти</button>
+        </div>
+    </form>
+</section>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

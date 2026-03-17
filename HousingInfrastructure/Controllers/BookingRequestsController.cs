@@ -50,13 +50,18 @@ namespace HousingInfrastructure.Controllers
         }
 
         // GET: BookingRequests/Create
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> Create(int? housingId)
         {
             await SyncStatusesAsync();
-            ViewData["HousingId"] = new SelectList(_context.Housings.Where(h => h.IsAvailable == true), "Id", "Address"); 
+            ViewData["HousingId"] = new SelectList(_context.Housings.Where(h => h.IsAvailable == true), "Id", "Address", housingId); 
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email");
            
-            return View();
+            return View(new BookingRequest
+            {
+                HousingId = housingId ?? 0,
+                DateFrom = DateOnly.FromDateTime(DateTime.Today),
+                DateTo = DateOnly.FromDateTime(DateTime.Today.AddDays(1))
+            });
         }
 
         // POST: BookingRequests/Create
@@ -76,6 +81,8 @@ namespace HousingInfrastructure.Controllers
             {
                 ModelState.AddModelError("DateTo", "End date must be after start date.");
             }
+
+            await ValidateNotBookingOwnHousingAsync(bookingRequest);
 
             if (ModelState.IsValid)
             {
@@ -134,6 +141,8 @@ namespace HousingInfrastructure.Controllers
             {
                 ModelState.AddModelError("DateTo", "End date must be after start date.");
             }
+
+            await ValidateNotBookingOwnHousingAsync(bookingRequest);
 
             if (ModelState.IsValid)
             {
@@ -198,6 +207,19 @@ namespace HousingInfrastructure.Controllers
             await _context.SaveChangesAsync();
             await SyncStatusesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        private async Task ValidateNotBookingOwnHousingAsync(BookingRequest bookingRequest)
+        {
+            var housingOwnerId = await _context.Housings
+                .Where(h => h.Id == bookingRequest.HousingId)
+                .Select(h => h.OwnerId)
+                .FirstOrDefaultAsync();
+
+            if (housingOwnerId == bookingRequest.UserId)
+            {
+                ModelState.AddModelError("UserId", "Власник не може бронювати власне житло.");
+            }
         }
 
         private async Task SyncStatusesAsync()

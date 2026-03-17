@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using HousingDomain.Models;
+using HousingInfrastructure;
+using HousingInfrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using HousingDomain.Models;
-using HousingInfrastructure;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace HousingInfrastructure.Controllers
 {
@@ -20,11 +21,106 @@ namespace HousingInfrastructure.Controllers
         }
 
         // GET: Housings
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? userId)
         {
             await SyncHousingAvailabilityAsync();
-            var housingContext = _context.Housings.Include(h => h.Owner);
-            return View(await housingContext.ToListAsync());
+            var users = await _context.Users
+    .AsNoTracking()
+    .OrderBy(u => u.Name)
+    .ThenBy(u => u.Email)
+    .ToListAsync();
+            ViewData["UserId"] = new SelectList(users, "Id", "Email", userId);
+            ViewBag.SelectedUserId = userId;
+
+            var housings = await _context.Housings
+                .Include(h => h.Owner)
+                .Include(h => h.BookingRequests)
+                .ToListAsync();
+
+            if (userId.HasValue)
+            {
+                var selectedUserId = userId.Value;
+                var selectedProfile = await _context.Profiles
+                    .Include(p => p.User)
+                    .FirstOrDefaultAsync(p => p.UserId == selectedUserId);
+
+                var neighborProfiles = await _context.Profiles
+                    .Include(p => p.User)
+                    .ToDictionaryAsync(p => p.UserId);
+
+                housings = housings
+                    .Select(h => new
+                    {
+                        Housing = h,
+                        Score = BuildHousingScore(h, selectedUserId, selectedProfile, neighborProfiles)
+                    })
+                    .OrderByDescending(x => x.Score)
+                    .ThenBy(x => x.Housing.Price ?? decimal.MaxValue)
+                    .Select(x => x.Housing)
+                    .ToList();
+            }
+            else
+            {
+                housings = housings
+                    .OrderByDescending(h => h.IsAvailable == true)
+                    .ThenBy(h => h.Price ?? decimal.MaxValue)
+                    .ToList();
+            }
+
+            return View(housings);
+        }
+
+
+        private static double BuildHousingScore(
+            Housing housing,
+            int selectedUserId,
+            Profile? selectedProfile,
+            IReadOnlyDictionary<int, Profile> allProfiles)
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var score = 0.0;
+
+            if (housing.OwnerId == selectedUserId)
+            {
+                score -= 1000;
+            }
+
+            if (housing.IsAvailable == true)
+            {
+                score += 80;
+            }
+
+            var ownBookings = housing.BookingRequests.Count(b => b.UserId == selectedUserId);
+            if (ownBookings > 0)
+            {
+                score += 30 + (ownBookings * 5);
+            }
+
+            var activeOrUpcomingNeighborIds = housing.BookingRequests
+                .Where(b => b.UserId != selectedUserId && b.DateTo >= today)
+                .Select(b => b.UserId)
+                .Distinct()
+                .ToList();
+
+            if (selectedProfile != null && activeOrUpcomingNeighborIds.Count > 0)
+            {
+                var compatibilityValues = activeOrUpcomingNeighborIds
+                    .Where(id => allProfiles.ContainsKey(id))
+                    .Select(id => CompatibilityService.Calculate(selectedProfile, allProfiles[id]))
+                    .ToList();
+
+                if (compatibilityValues.Count > 0)
+                {
+                    score += compatibilityValues.Average();
+                }
+            }
+
+            if (housing.Price.HasValue)
+            {
+                score -= (double)housing.Price.Value / 1000.0;
+            }
+
+            return score;
         }
 
         // GET: Housings/Details/5

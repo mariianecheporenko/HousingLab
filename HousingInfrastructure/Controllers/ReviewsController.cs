@@ -48,7 +48,7 @@ namespace HousingInfrastructure.Controllers
         }
 
         // GET: Reviews/Create
-        public IActionResult Create()
+        public IActionResult Create(int? id)
         {
             ViewData["HousingId"] = new SelectList(_context.Housings, "Id", "Address");
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email");

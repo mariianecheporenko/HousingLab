@@ -13,7 +13,7 @@ public partial class Review : Entity
 
     public string? Comment { get; set; }
 
-    public virtual Housing Housing { get; set; } = null!;
+    public virtual Housing? Housing { get; set; }
 
-    public virtual User User { get; set; } = null!;
+    public virtual User? User { get; set; }
 }

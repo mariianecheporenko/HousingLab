@@ -1,8 +1,34 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "HomeMatch";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="hero-card mb-4">
+    <p class="hero-badge">Сайт знайомств, але для житла</p>
+    <h1>Знайди свій perfect match серед квартир </h1>
+    <p class="lead">Тут анкети — це житло. Гортай, порівнюй, бронюй і знаходь місце, яке відгукнеться серцю.</p>
+    <div class="d-flex flex-wrap gap-2 mt-3">
+        <a class="btn btn-primary" asp-controller="Housings" asp-action="Index">Дивитися житло</a>
+        <a class="btn btn-outline-light" asp-controller="BookingRequests" asp-action="Create">Створити бронювання</a>
+    </div>
+</section>
+
+<section class="row g-3">
+    <div class="col-md-4">
+        <article class="feature-card h-100">
+            <h3>Свайпни поглядом</h3>
+            <p>Картки житла допомагають швидко зрозуміти, чи це "воно".</p>
+        </article>
+    </div>
+    <div class="col-md-4">
+        <article class="feature-card h-100">
+            <h3>Профілі сусідів</h3>
+            <p>Порівнюй сумісність за звичками, щоб співжиття було комфортним.</p>
+        </article>
+    </div>
+    <div class="col-md-4">
+        <article class="feature-card h-100">
+            <h3>Бронюй за хвилину</h3>
+            <p>Обери дати за шаблоном і забронюй житло без зайвих кроків.</p>
+        </article>
+    </div>
+</section>

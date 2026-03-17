@@ -1,77 +1,60 @@
 ﻿@model IEnumerable<HousingDomain.Models.Housing>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Каталог помешкання";
 }
 
-<h1>Index</h1>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h2 mb-0">Каталог помешкання</h1>
+        <p class="text-muted mb-0">Вибирай житло як ідеальний метч.</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">Додати житло</a>
+</div>
+<section class="filter-panel mb-4">
+    <form asp-action="Index" method="get" class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label for="userId" class="form-label mb-1">Сортувати відносно користувача</label>
+            <select id="userId" name="userId" class="form-select" asp-items="ViewBag.UserId">
+                <option value="">Загальне сортування</option>
+            </select>
+            <div class="form-text">Сортує за бронюваннями користувача та сумісністю вподобань із потенційними сусідами.</div>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Застосувати</button>
+        </div>
+        <div class="col-auto">
+            <a asp-action="Index" class="btn btn-outline-secondary">Скинути</a>
+        </div>
+    </form>
+</section>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Address)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.City)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Price)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Rooms)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Area)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.IsAvailable)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Description)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.OwnerId)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Address)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.City)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Price)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Rooms)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Area)
-            </td>
-            <td>
-                    @(item.IsAvailable == true ? "Доступно" : item.IsAvailable == false ? "Недоступно" : "Не вказано")
-                </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Description)
-            </td>
-            <td>
-                    @(item.Owner?.Name)
-                </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
+<div class="housing-grid">
+    @foreach (var item in Model)
+    {
+        <article class="housing-card">
+            <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+                <h2 class="h5 mb-0">@item.Address</h2>
+                <span class="status-pill @(item.IsAvailable == true ? "status-open" : "status-closed")">
+                    @(item.IsAvailable == true ? "Вільно" : "Зайнято")
+                </span>
+            </div>
+
+            <p class="text-muted mb-2">📍 @(string.IsNullOrWhiteSpace(item.City) ? "Місто не вказано" : item.City)</p>
+            <p class="mb-2">@item.Description</p>
+
+            <ul class="housing-meta list-unstyled mb-3">
+                <li><strong>@(item.Price?.ToString("0.##") ?? "—")</strong> грн</li>
+                <li><strong>@(item.Rooms?.ToString() ?? "—")</strong> кімнати</li>
+                <li><strong>@(item.Area?.ToString("0.##") ?? "—")</strong> м²</li>
+                <li>Власник: <strong>@(item.Owner?.Name ?? "Не вказано")</strong></li>
+            </ul>
+
+            <div class="d-flex gap-2 flex-wrap">
+                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Профіль помешкання</a>
+                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Редагувати</a>
+                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Видалити</a>
+            </div>
+        </article>
+    }
+</div>
