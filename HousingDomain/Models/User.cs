@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Identity;
 
 namespace HousingDomain.Models;
 
-public partial class User : Entity
+public partial class User : IdentityUser<int>
 {
     [Required]
     [Display(Name = "Електронна пошта")]

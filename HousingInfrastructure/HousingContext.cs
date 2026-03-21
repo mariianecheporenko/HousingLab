@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using HousingDomain.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace HousingInfrastructure;
 
-public partial class HousingContext : DbContext
+public partial class HousingContext : IdentityDbContext<User, IdentityRole<int>, int>
 {
     public HousingContext()
     {
@@ -26,7 +28,7 @@ public partial class HousingContext : DbContext
 
     public virtual DbSet<Review> Reviews { get; set; }
 
-    public virtual DbSet<User> Users { get; set; }
+//    public virtual DbSet<User> Users { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -34,6 +36,8 @@ public partial class HousingContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<Availability>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("Availability_pkey");
@@ -150,7 +154,7 @@ public partial class HousingContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("Users_pkey");
+            entity.ToTable("Users");
 
             entity.Property(e => e.Gender).HasMaxLength(6);
             entity.Property(e => e.IsOwnerApproved).HasDefaultValue(false);
