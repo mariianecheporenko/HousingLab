@@ -7,16 +7,20 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using HousingDomain.Models;
 using HousingInfrastructure;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 
 namespace HousingInfrastructure.Controllers
 {
     public class ProfilesController : Controller
     {
         private readonly HousingContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public ProfilesController(HousingContext context)
+        public ProfilesController(HousingContext context, UserManager<User>userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: Profiles
@@ -74,20 +78,22 @@ namespace HousingInfrastructure.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("UserId,NoiseLevel,SleepMode,Pets,Guests,CleanLevel,Smoking,PreferredGender,Id")] Profile profile)
+        [Authorize]
+        public async Task<IActionResult> Create([Bind("Id,NoiseLevel,SleepMode,Smoking,Guests,CleanLevel,PreferredGender")] Profile profile)
         {
-            if (await _context.Profiles.AnyAsync(p => p.UserId == profile.UserId && p.Id != profile.Id))
-            {
-                ModelState.AddModelError("UserId", "Для цього користувача вже існує профіль.");
-            }
+            var user = await _userManager.GetUserAsync(User);
+            profile.UserId = user.Id;
+
+            ModelState.Remove("UserId");
+            ModelState.Remove("User");
 
             if (ModelState.IsValid)
             {
                 _context.Add(profile);
                 await _context.SaveChangesAsync();
-                return RedirectToAction("Details", "Users", new { id = profile.UserId });
+                return RedirectToAction(nameof(Index));
             }
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", profile.UserId);
+
             return View(profile);
         }
 
@@ -105,6 +111,13 @@ namespace HousingInfrastructure.Controllers
             {
                 return NotFound();
             }
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (profile.UserId != currentUser.Id && currentUser.Role != "ADMIN")
+            {
+                return Forbid(); // Або RedirectToAction("Index")
+            }
+
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", profile.UserId);
             return View(profile);
         }
@@ -143,7 +156,7 @@ namespace HousingInfrastructure.Controllers
                         throw;
                     }
                 }
-                return RedirectToAction("Details", "Users", new { id = profile.UserId });
+                return RedirectToAction(nameof(MyProfile));
             }
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", profile.UserId);
             return View(profile);
@@ -181,6 +194,23 @@ namespace HousingInfrastructure.Controllers
 
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Profiles/MyProfile
+        [Authorize]
+        public async Task<IActionResult> MyProfile()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return NotFound();
+
+            var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
+
+            if (profile == null)
+            {
+                return RedirectToAction(nameof(Create));
+            }
+
+            return View(profile);
         }
         private static Profile CreateDefaultProfile(int userId = 0) => new()
         {

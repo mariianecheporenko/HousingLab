@@ -1,22 +1,27 @@
-﻿ using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using HousingDomain.Models;
+using HousingInfrastructure;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using HousingDomain.Models;
-using HousingInfrastructure;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 
 namespace HousingInfrastructure.Controllers
 {
     public class BookingRequestsController : Controller
     {
         private readonly HousingContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public BookingRequestsController(HousingContext context)
+        public BookingRequestsController(HousingContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: BookingRequests
@@ -50,18 +55,23 @@ namespace HousingInfrastructure.Controllers
         }
 
         // GET: BookingRequests/Create
+        [Authorize]
         public async Task<IActionResult> Create(int? housingId)
         {
-            await SyncStatusesAsync();
-            ViewData["HousingId"] = new SelectList(_context.Housings.Where(h => h.IsAvailable == true), "Id", "Address", housingId); 
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email");
-           
-            return View(new BookingRequest
+            if (housingId == null) return NotFound();
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            var housing = await _context.Housings.FindAsync(housingId);
+
+            if (housing?.OwnerId == currentUser.Id)
             {
-                HousingId = housingId ?? 0,
-                DateFrom = DateOnly.FromDateTime(DateTime.Today),
-                DateTo = DateOnly.FromDateTime(DateTime.Today.AddDays(1))
-            });
+                TempData["Error"] = "Ви не можете забронювати власне житло!";
+                return RedirectToAction("Details", "Housings", new { id = housingId });
+            }
+
+            // Передаємо ID житла у View
+            ViewBag.HousingId = housingId;
+            return View();
         }
 
         // POST: BookingRequests/Create
@@ -69,32 +79,26 @@ namespace HousingInfrastructure.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("UserId,HousingId,DateFrom,DateTo,Id")] BookingRequest bookingRequest)
+        [Authorize]
+        public async Task<IActionResult> Create([Bind("DateFrom,DateTo")] BookingRequest bookingRequest, int housingId)
         {
-            DateOnly today = DateOnly.FromDateTime(DateTime.Today);
-            if (bookingRequest.DateFrom < today)
-            {
-                ModelState.AddModelError("DateFrom", "Start date cannot be earlier than today.");
-            }
+            var currentUser = await _userManager.GetUserAsync(User);
 
-            if (bookingRequest.DateTo <= bookingRequest.DateFrom)
-            {
-                ModelState.AddModelError("DateTo", "End date must be after start date.");
-            }
+            bookingRequest.UserId = currentUser.Id;
+            bookingRequest.HousingId = housingId;
 
-            await ValidateNotBookingOwnHousingAsync(bookingRequest);
+            ModelState.Remove("UserId");
+            ModelState.Remove("HousingId");
+            ModelState.Remove("User");
+            ModelState.Remove("Housing");
 
             if (ModelState.IsValid)
             {
-                bookingRequest.Status = GetBookingStatus(bookingRequest, today);
                 _context.Add(bookingRequest);
                 await _context.SaveChangesAsync();
-
-                await SyncStatusesAsync();
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(MyBookings));
             }
-            ViewData["HousingId"] = new SelectList(_context.Housings.Where(h => h.IsAvailable == true), "Id", "Address", bookingRequest.HousingId); 
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Email", bookingRequest.UserId);
+            ViewBag.HousingId = housingId;
             return View(bookingRequest);
         }
 
@@ -280,6 +284,18 @@ namespace HousingInfrastructure.Controllers
         private bool BookingRequestExists(int id)
         {
             return _context.BookingRequests.Any(e => e.Id == id);
+        }
+
+        [Authorize]
+        public async Task<IActionResult> MyBookings()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var myBookings = await _context.BookingRequests
+                .Include(b => b.Housing)
+                .Where(b => b.UserId == user.Id)
+                .ToListAsync();
+
+            return View(myBookings);
         }
     }
 }

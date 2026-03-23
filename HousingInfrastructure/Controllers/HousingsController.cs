@@ -1,6 +1,8 @@
 ﻿using HousingDomain.Models;
 using HousingInfrastructure;
 using HousingInfrastructure.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +16,13 @@ namespace HousingInfrastructure.Controllers
     public class HousingsController : Controller
     {
         private readonly HousingContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public HousingsController(HousingContext context)
+
+        public HousingsController(HousingContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: Housings
@@ -25,10 +30,10 @@ namespace HousingInfrastructure.Controllers
         {
             await SyncHousingAvailabilityAsync();
             var users = await _context.Users
-    .AsNoTracking()
-    .OrderBy(u => u.Name)
-    .ThenBy(u => u.Email)
-    .ToListAsync();
+                .AsNoTracking()
+                .OrderBy(u => u.Name)
+                .ThenBy(u => u.Email)
+                .ToListAsync();
             ViewData["UserId"] = new SelectList(users, "Id", "Email", userId);
             ViewBag.SelectedUserId = userId;
 
@@ -148,10 +153,20 @@ namespace HousingInfrastructure.Controllers
         }
 
         // GET: Housings/Create
-        public IActionResult Create()
+        [Authorize]
+        public async Task<IActionResult> Create()
+
         {
+            var currentUser = await _userManager.GetUserAsync(User);
+
+            if (currentUser == null || !currentUser.WantsToBeOwner || !currentUser.IsOwnerApproved)
+            {
+                TempData["Error"] = "Тільки підтверджені власники можуть додавати житло.";
+                return RedirectToAction(nameof(Index)); 
+            }
             SetCitiesSelectList();
             SetOwnersSelectList();
+
             return View();
         }
 
@@ -160,18 +175,20 @@ namespace HousingInfrastructure.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Address,City,Price,Rooms,Area,IsAvailable,Description,OwnerId,Id")] Housing housing)
+        [Authorize]
+        public async Task<IActionResult> Create([Bind("Id,Address,City,Description,PricePerMonth,Rooms")] Housing housing)
         {
-            if (housing.OwnerId.HasValue)
-            {
-                var ownerAllowed = await _context.Users.AnyAsync(u =>
-                    u.Id == housing.OwnerId.Value && u.WantsToBeOwner && u.IsOwnerApproved);
+            var currentUser = await _userManager.GetUserAsync(User);
 
-                if (!ownerAllowed)
-                {
-                    ModelState.AddModelError("OwnerId", "Житло може додавати лише підтверджений власник.");
-                }
+            if (currentUser == null || !currentUser.WantsToBeOwner || !currentUser.IsOwnerApproved)
+            {
+                return Forbid();
             }
+
+            housing.OwnerId = currentUser.Id;
+
+            ModelState.Remove("OwnerId");
+            ModelState.Remove("Owner");
 
             if (ModelState.IsValid)
             {
@@ -179,8 +196,7 @@ namespace HousingInfrastructure.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            SetCitiesSelectList(housing.City);
-            SetOwnersSelectList(housing.OwnerId);
+
             return View(housing);
         }
 
@@ -193,6 +209,11 @@ namespace HousingInfrastructure.Controllers
             }
 
             var housing = await _context.Housings.FindAsync(id);
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (housing.OwnerId != currentUser?.Id && currentUser?.Role != "ADMIN")
+            {
+                return Forbid();
+            }
             if (housing == null)
             {
                 return NotFound();
@@ -218,6 +239,11 @@ namespace HousingInfrastructure.Controllers
             {
                 var ownerAllowed = await _context.Users.AnyAsync(u =>
                     u.Id == housing.OwnerId.Value && u.WantsToBeOwner && u.IsOwnerApproved);
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (housing.OwnerId != currentUser?.Id && currentUser?.Role != "ADMIN")
+                {
+                    return Forbid();
+                }
 
                 if (!ownerAllowed)
                 {
@@ -261,6 +287,11 @@ namespace HousingInfrastructure.Controllers
 
             var housing = await _context.Housings
                 .FirstOrDefaultAsync(m => m.Id == id);
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (housing.OwnerId != currentUser?.Id && currentUser?.Role != "ADMIN")
+            {
+                return Forbid();
+            }
             if (housing == null)
             {
                 return NotFound();
@@ -284,8 +315,8 @@ namespace HousingInfrastructure.Controllers
 
             foreach (var housing in housings)
             {
-                var shouldBeAvailable = !occupiedSet.Contains(housing.Id);
-                if (housing.IsAvailable != shouldBeAvailable)
+                var activeBookingsCount = occupiedHousingIds.Count(id => id == housing.Id);
+                var shouldBeAvailable = housing.Rooms > activeBookingsCount; if (housing.IsAvailable != shouldBeAvailable)
                 {
                     housing.IsAvailable = shouldBeAvailable;
                     changed = true;
@@ -404,6 +435,11 @@ namespace HousingInfrastructure.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var housing = await _context.Housings.FindAsync(id);
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (housing.OwnerId != currentUser?.Id && currentUser?.Role != "ADMIN")
+            {
+                return Forbid();
+            }
             if (housing != null)
             {
                 _context.Housings.Remove(housing);

@@ -1,0 +1,26 @@
+﻿@model IEnumerable<HousingDomain.Models.BookingRequest>
+
+<div class="container mt-4">
+    <h2 class="mb-4">Мої бронювання</h2>
+    <div class="row">
+        @foreach (var item in Model)
+        {
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 shadow-sm border-0 bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">📍 @item.Housing?.Address</h5>
+                        <p class="card-text text-muted">
+                            <i class="bi bi-building"></i> @item.Housing?.City <br />
+                            <hr />
+                            <strong>Період:</strong> <br />
+                            @item.DateFrom.ToShortDateString() — @item.DateTo.ToShortDateString()
+                        </p>
+                    </div>
+                    <div class="card-footer bg-white border-0">
+                        <span class="badge bg-success">Заброньовано</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

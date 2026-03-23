@@ -32,18 +32,52 @@
         <dt class="col-sm-4">Власник</dt>
         <dd class="col-sm-8">@Model.Owner?.Name</dd>
 
-    </dl>
-    <div class="d-flex gap-2 flex-wrap mb-3">
-        <a asp-controller="BookingRequests"
-           asp-action="Create"
-           asp-route-housingId="@Model.Id"
-           class="btn btn-primary">
-            Бронювати це житло
-        </a>
-        <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-outline-secondary">Редагувати</a>
-        <a asp-action="Index" class="btn btn-outline-secondary">Назад до каталогу</a>
-    </div>
+        <div class="card mt-4 mb-4 border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-people-fill"></i> Зараз проживають:</h5>
+                <hr />
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                    @{
+                        var activeBookings = Model.BookingRequests.Where(b => b.DateTo >= DateOnly.FromDateTime(DateTime.Today)).ToList();
+                    }
+
+                    @foreach (var booking in activeBookings)
+                    {
+                        <div class="p-2 border rounded bg-light d-flex align-items-center">
+                            <span class="me-2">👤</span>
+                            <div>
+                                <div class="fw-bold">@booking.User?.Name</div>
+                                @if (booking.User?.Profile != null)
+                                {
+                                    <a asp-controller="Profiles" asp-action="Details" asp-route-id="@booking.User.Profile.Id"
+                                       class="badge bg-info text-dark text-decoration-none">Профіль сусіда</a>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (!activeBookings.Any())
+                    {
+                        <p class="text-muted mb-0 italic">Наразі в цьому помешканні ніхто не проживає. Будьте першим!</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap mb-3">
+            <a asp-controller="BookingRequests"
+               asp-action="Create"
+               asp-route-housingId="@Model.Id"
+               class="btn btn-primary">
+                Забронювати
+            </a>
+            <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-outline-secondary">Редагувати</a>
+            <a asp-action="Index" class="btn btn-outline-secondary">Назад до каталогу</a>
+        </div>
 </section>
+    </dl>
+
+
 
 <hr />
 <h3>Відгуки</h3>

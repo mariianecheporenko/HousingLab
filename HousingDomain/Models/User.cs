@@ -23,7 +23,7 @@ public partial class User : IdentityUser<int>
     [Display(Name = "Підтверджений власник")]
     public bool IsOwnerApproved { get; set; } = false!;
 
-    public string Role { get; set; } = null!;
+    public string? Role { get; set; } = "USER";
 
     public virtual ICollection<BookingRequest> BookingRequests { get; set; } = new List<BookingRequest>();
 

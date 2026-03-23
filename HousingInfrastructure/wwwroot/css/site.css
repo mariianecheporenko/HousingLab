@@ -176,7 +176,21 @@ textarea {
         color: var(--accent-dark);
     }
 
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+.container.flex-grow-1 {
+    flex: 1 0 auto;
+}
+
 .footer {
-    margin-top: auto;
-    border-top: 1px solid rgba(119, 136, 115, 0.3);
+    flex-shrink: 0;
 }

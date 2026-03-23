@@ -1,7 +1,21 @@
 ﻿@model IEnumerable<HousingDomain.Models.Housing>
+@using Microsoft.AspNetCore.Identity
+@using HousingDomain.Models
+@inject UserManager<User> UserManager
 
 @{
     ViewData["Title"] = "Каталог помешкання";
+
+    User? currentUser = null;
+    int? currentUserId = null;
+    bool isAdmin = false;
+
+    if (User.Identity?.IsAuthenticated == true)
+    {
+        currentUser = await UserManager.GetUserAsync(User);
+        currentUserId = currentUser?.Id;
+        isAdmin = currentUser?.Role == "ADMIN";
+    }
 }
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -9,33 +23,41 @@
         <h1 class="h2 mb-0">Каталог помешкання</h1>
         <p class="text-muted mb-0">Вибирай житло як ідеальний метч.</p>
     </div>
-    <a asp-action="Create" class="btn btn-primary">Додати житло</a>
+
+    @if (currentUser != null && currentUser.WantsToBeOwner && currentUser.IsOwnerApproved)
+    {
+        <div class="mb-3 mb-md-0">
+            <a asp-action="Create" class="btn btn-success shadow-sm">
+                <i class="bi bi-plus-circle"></i> Додати нове житло
+            </a>
+        </div>
+    }
 </div>
-<section class="filter-panel mb-4">
-    <form asp-action="Index" method="get" class="row g-2 align-items-end">
-        <div class="col-md-6">
-            <label for="userId" class="form-label mb-1">Сортувати відносно користувача</label>
-            <select id="userId" name="userId" class="form-select" asp-items="ViewBag.UserId">
-                <option value="">Загальне сортування</option>
-            </select>
-            <div class="form-text">Сортує за бронюваннями користувача та сумісністю вподобань із потенційними сусідами.</div>
-        </div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Доступне житло</h2>
+
+    @if (currentUser != null)
+    {
         <div class="col-auto">
-            <button type="submit" class="btn btn-primary">Застосувати</button>
+            <a asp-action="Index" asp-route-userId="@currentUserId" class="btn btn-warning fw-bold shadow-sm">
+                ✨ Підібрати найкращі варіанти для мене
+            </a>
+            @if (Context.Request.Query.ContainsKey("userId"))
+            {
+                <a asp-action="Index" class="btn btn-link text-secondary text-decoration-none">Скинути розумне сортування</a>
+            }
         </div>
-        <div class="col-auto">
-            <a asp-action="Index" class="btn btn-outline-secondary">Скинути</a>
-        </div>
-    </form>
-</section>
+    }
+</div>
 
 <div class="housing-grid">
     @foreach (var item in Model)
     {
-        <article class="housing-card">
+        <article class="housing-card p-3 border rounded shadow-sm mb-3">
             <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
                 <h2 class="h5 mb-0">@item.Address</h2>
-                <span class="status-pill @(item.IsAvailable == true ? "status-open" : "status-closed")">
+                <span class="status-pill @(item.IsAvailable == true ? "status-open text-success fw-bold" : "status-closed text-danger fw-bold")">
                     @(item.IsAvailable == true ? "Вільно" : "Зайнято")
                 </span>
             </div>
@@ -45,15 +67,35 @@
 
             <ul class="housing-meta list-unstyled mb-3">
                 <li><strong>@(item.Price?.ToString("0.##") ?? "—")</strong> грн</li>
-                <li><strong>@(item.Rooms?.ToString() ?? "—")</strong> кімнати</li>
+                <li><strong>@(item.Rooms?.ToString() ?? "—")</strong> кімнат(и)</li>
                 <li><strong>@(item.Area?.ToString("0.##") ?? "—")</strong> м²</li>
                 <li>Власник: <strong>@(item.Owner?.Name ?? "Не вказано")</strong></li>
             </ul>
 
-            <div class="d-flex gap-2 flex-wrap">
-                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Профіль помешкання</a>
-                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Редагувати</a>
-                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Видалити</a>
+            @{
+                var today = DateOnly.FromDateTime(DateTime.Today);
+                var occupiedSlots = item.BookingRequests?.Count(b => b.DateFrom <= today && b.DateTo >= today) ?? 0;
+                var freeSlots = (item.Rooms ?? 0) - occupiedSlots;
+            }
+
+            <p class="card-text mb-3">
+                <strong>Вільних місць:</strong>
+                <span class="badge @(freeSlots > 0 ? "bg-success" : "bg-danger")">
+                    @(freeSlots > 0 ? freeSlots.ToString() : "Місць немає")
+                </span>
+            </p>
+
+            @{
+                bool canEdit = currentUser != null && (item.OwnerId == currentUserId || isAdmin);
+            }
+            <div class="mt-auto pt-3 border-top d-flex gap-2">
+                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info @(canEdit ? "flex-fill" : "w-100")">Деталі</a>
+
+                @if (canEdit)
+                {
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary flex-fill">Редагувати</a>
+                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger flex-fill">Видалити</a>
+                }
             </div>
         </article>
     }

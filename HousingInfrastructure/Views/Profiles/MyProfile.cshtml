@@ -1,0 +1,37 @@
+﻿@model HousingDomain.Models.Profile
+
+@{
+    ViewData["Title"] = "Мій профіль";
+}
+
+<div class="container mt-4">
+    <h2>Мій профіль</h2>
+    <hr />
+
+    <div class="card shadow-sm col-md-6">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-5">Рівень шуму</dt>
+                <dd class="col-sm-7">@Model.NoiseLevel</dd>
+
+                <dt class="col-sm-5">Режим сну</dt>
+                <dd class="col-sm-7">@Model.SleepMode</dd>
+
+                <dt class="col-sm-5">Куріння</dt>
+                <dd class="col-sm-7">@Model.Smoking</dd>
+
+                <dt class="col-sm-5">Гості</dt>
+                <dd class="col-sm-7">@Model.Guests</dd>
+
+                <dt class="col-sm-5">Рівень чистоти</dt>
+                <dd class="col-sm-7">@Model.CleanLevel</dd>
+
+                <dt class="col-sm-5">Бажана стать сусіда</dt>
+                <dd class="col-sm-7">@Model.PreferredGender</dd>
+            </dl>
+        </div>
+        <div class="card-footer bg-white">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Редагувати профіль</a>
+        </div>
+    </div>
+</div>

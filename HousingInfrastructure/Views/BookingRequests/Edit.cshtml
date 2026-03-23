@@ -30,14 +30,14 @@
         </div>
 
         <div class="col-md-6">
-            <label asp-for="DateFrom" class="form-label"></label>
+            <label asp-for="DateFrom" type="date" class="form-label"></label>
             <input asp-for="DateFrom" class="form-control" placeholder="Наприклад: 2026-04-15" />
             <div class="form-text">Формат дати: рррр-мм-дд.</div>
             <span asp-validation-for="DateFrom" class="text-danger"></span>
         </div>
 
         <div class="col-md-6">
-            <label asp-for="DateTo" class="form-label"></label>
+            <label asp-for="DateTo" type="date" class="form-label"></label>
             <input asp-for="DateTo" class="form-control" placeholder="Наприклад: 2026-04-30" />
             <div class="form-text">Кінцева дата має бути пізніше за дату початку.</div>
             <span asp-validation-for="DateTo" class="text-danger"></span>

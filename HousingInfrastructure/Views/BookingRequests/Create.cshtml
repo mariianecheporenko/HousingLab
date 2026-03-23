@@ -2,43 +2,39 @@
 
 @{
     ViewData["Title"] = "Нове бронювання";
+    var today = DateTime.Now.ToString("yyyy-MM-dd");
+    var tomorrow = DateTime.Now.AddDays(1).ToString("yyyy-MM-dd");
 }
 
     <section class="romance-form-card">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
             <div>
                 <h1 class="h3 mb-1">Забронювати вподобане житло</h1>
-                <p class="text-muted mb-0">Обери користувача, квартиру і дати заселення.</p>
+                <p class="text-muted mb-0">Обери дати заселення.</p>
             </div>
-            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">До списку бронювань</a>
-</div>
+        <a asp-controller="Housings" asp-action="Details" asp-route-id="@ViewBag.HousingId" class="btn btn-outline-secondary">Повернутися до помешкання</a>
+    </div>
 
     <form asp-action="Create" class="row g-3">
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
         <div class="col-md-6">
-            <label asp-for="UserId" class="form-label"></label>
-            <select asp-for="UserId" class="form-select" asp-items="ViewBag.UserId"></select>
-            <span asp-validation-for="UserId" class="text-danger"></span>
+            <input type="hidden" name="UserId" value="@ViewBag.UserId" />
         </div>
 
         <div class="col-md-6">
-            <label asp-for="HousingId" class="form-label"></label>
-            <select asp-for="HousingId" class="form-select" asp-items="ViewBag.HousingId"></select>
-            <span asp-validation-for="HousingId" class="text-danger"></span>
+            <input type="hidden" name="housingId" value="@ViewBag.HousingId" />
         </div>
 
-        <div class="col-md-6">
-            <label asp-for="DateFrom" class="form-label"></label>
-            <input asp-for="DateFrom" class="form-control" placeholder="Наприклад: 2026-04-15" />
-            <div class="form-text">Формат дати: рррр-мм-дд.</div>
+        <div class="form-group mb-3">
+            <label asp-for="DateFrom" class="control-label fw-bold">Дата заїзду</label>
+            <input asp-for="DateFrom" type="date" class="form-control" value="@today" min="@today" required />
             <span asp-validation-for="DateFrom" class="text-danger"></span>
         </div>
 
-        <div class="col-md-6">
-            <label asp-for="DateTo" class="form-label"></label>
-            <input asp-for="DateTo" class="form-control" placeholder="Наприклад: 2026-04-30" />
-            <div class="form-text">Кінцева дата має бути пізніше за дату початку.</div>
+        <div class="form-group mb-4">
+            <label asp-for="DateTo" class="control-label fw-bold">Дата виїзду</label>
+            <input asp-for="DateTo" type="date" class="form-control" value="@tomorrow" min="@today" required />
             <span asp-validation-for="DateTo" class="text-danger"></span>
         </div>
 

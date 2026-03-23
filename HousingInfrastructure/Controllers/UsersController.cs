@@ -1,6 +1,8 @@
 ﻿using HousingDomain.Models;
 using HousingInfrastructure;
 using HousingInfrastructure.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -15,15 +17,24 @@ namespace HousingInfrastructure.Controllers
     public class UsersController : Controller
     {
         private readonly HousingContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public UsersController(HousingContext context)
+        public UsersController(HousingContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: Users
+        [Authorize]
         public async Task<IActionResult> Index()
         {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser?.Role != "ADMIN" && currentUser?.Role != "ADMIN")
+            {
+                return RedirectToAction("Index", "Home"); // Якщо не адмін - викидаємо на головну
+            }
+
             return View(await _context.Users.ToListAsync());
         }
 
