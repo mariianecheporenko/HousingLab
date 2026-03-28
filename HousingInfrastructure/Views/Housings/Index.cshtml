@@ -51,6 +51,26 @@
     }
 </div>
 
+<div class="row g-3 mb-4">
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Кількість пропозицій житла за містами</h3>
+                <div id="housingCountByCityChart" style="min-height: 360px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Середній рейтинг житла за категоріями ціни</h3>
+                <div id="averageRatingByPriceCategoryChart" style="min-height: 360px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="housing-grid">
     @foreach (var item in Model)
     {
@@ -100,3 +120,67 @@
         </article>
     }
 </div>
+
+</div>
+
+@section Scripts
+{
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        google.charts.load('current', { 'packages': ['corechart'] });
+        google.charts.setOnLoadCallback(drawCharts);
+
+        function drawCharts() {
+            drawHousingCountByCityChart();
+            drawAverageRatingByPriceCategoryChart();
+        }
+
+        function drawHousingCountByCityChart() {
+            fetch('/api/charts/housingCountByCity')
+                .then(response => response.json())
+                .then(data => {
+                    const dataTable = new google.visualization.DataTable();
+                    dataTable.addColumn('string', 'Місто');
+                    dataTable.addColumn('number', 'Кількість оголошень');
+                    data.forEach(item => dataTable.addRow([item.city, item.count]));
+
+                    const options = {
+                        title: 'Кількість пропозицій житла за містами',
+                        legend: { position: 'none' },
+                        width: '100%',
+                        height: 360,
+                        chartArea: { left: 50, top: 50, right: 15, bottom: 70 },
+                        hAxis: { slantedText: true, slantedTextAngle: 30 }
+                    };
+
+                    const chart = new google.visualization.ColumnChart(document.getElementById('housingCountByCityChart'));
+                    chart.draw(dataTable, options);
+                });
+        }
+
+        function drawAverageRatingByPriceCategoryChart() {
+            fetch('/api/charts/averageRatingByPriceCategory')
+                .then(response => response.json())
+                .then(data => {
+                    const dataTable = new google.visualization.DataTable();
+                    dataTable.addColumn('string', 'Категорія ціни');
+                    dataTable.addColumn('number', 'Середній рейтинг');
+                    data.forEach(item => dataTable.addRow([item.category, item.averageRating]));
+
+                    const options = {
+                        title: 'Середній рейтинг житла за категоріями ціни',
+                        legend: { position: 'none' },
+                        width: '100%',
+                        height: 360,
+                        chartArea: { left: 50, top: 50, right: 15, bottom: 55 },
+                        vAxis: { minValue: 0, maxValue: 5 }
+                    };
+
+                    const chart = new google.visualization.ColumnChart(document.getElementById('averageRatingByPriceCategoryChart'));
+                    chart.draw(dataTable, options);
+                });
+        }
+
+        window.addEventListener('resize', drawCharts);
+    </script>
+}
