@@ -2,6 +2,7 @@ using HousingDomain.Models;
 using HousingInfrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using HousingInfrastructure.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +25,8 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 })
 .AddEntityFrameworkStores<HousingContext>() 
 .AddDefaultTokenProviders();
+builder.Services.AddScoped<IDataPortServiceFactory<BookingRequest>, BookingRequestDataPortServiceFactory>();
+
 
 var app = builder.Build();
 

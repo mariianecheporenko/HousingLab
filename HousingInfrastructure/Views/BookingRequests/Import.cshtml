@@ -1,0 +1,31 @@
+﻿@{
+    ViewData["Title"] = "Імпорт бронювань";
+}
+
+<h2>Імпорт бронювань з Excel</h2>
+
+<div>
+    <h4>Оберіть Excel-файл для завантаження</h4>
+    @using (Html.BeginForm("Import", "BookingRequests", FormMethod.Post, new { enctype = "multipart/form-data", id = "frm-excel" }))
+    {
+        @Html.AntiForgeryToken()
+        <div class="mb-3">
+            <label for="fileExcel" class="form-label">Excel-файл</label>
+            <input class="form-control" type="file" name="fileExcel" id="fileExcel" accept=".xlsx" />
+        </div>
+        <div class="mb-3">
+            <input class="btn btn-primary" type="submit" value="Завантажити" />
+            <a class="btn btn-secondary" asp-action="Index">Назад</a>
+        </div>
+    }
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="text-danger">
+        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <p>@error.ErrorMessage</p>
+        }
+    </div>
+}

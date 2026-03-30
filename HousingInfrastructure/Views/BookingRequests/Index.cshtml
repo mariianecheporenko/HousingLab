@@ -1,7 +1,10 @@
 ﻿@model IEnumerable<HousingDomain.Models.BookingRequest>
+@using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
     ViewData["Title"] = "Index";
+    var isAdmin = ViewBag.IsAdmin is bool value && value;
+    SelectList? users = ViewBag.Users as SelectList;
 }
 
 <h1>Index</h1>
@@ -9,6 +12,25 @@
 <p>
     <a asp-action="Create">Create New</a>
 </p>
+@if (isAdmin)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" asp-action="Import">Завантажити з файлу (вся таблиця)</a>
+        <a class="btn btn-outline-primary" asp-action="Export">Експортувати всю таблицю</a>
+    </div>
+
+    <form asp-action="Export" method="get" class="row g-2 align-items-end mb-4">
+        <div class="col-md-6 col-lg-4">
+            <label class="form-label" for="userId">Експорт бронювань по користувачу</label>
+            <select id="userId" name="userId" class="form-select" asp-items="users">
+                <option value="">-- Оберіть користувача --</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-success">Експортувати по користувачу</button>
+        </div>
+    </form>
+}
 <table class="table">
     <thead>
         <tr>

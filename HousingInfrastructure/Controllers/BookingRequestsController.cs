@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using HousingInfrastructure.Services;
 
 
 namespace HousingInfrastructure.Controllers
@@ -17,17 +18,34 @@ namespace HousingInfrastructure.Controllers
     {
         private readonly HousingContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IDataPortServiceFactory<BookingRequest> _bookingRequestDataPortServiceFactory;
 
-        public BookingRequestsController(HousingContext context, UserManager<User> userManager)
+        public BookingRequestsController(
+                    HousingContext context,
+                    UserManager<User> userManager,
+                    IDataPortServiceFactory<BookingRequest> bookingRequestDataPortServiceFactory)
         {
             _context = context;
             _userManager = userManager;
+            _bookingRequestDataPortServiceFactory = bookingRequestDataPortServiceFactory;
         }
 
         // GET: BookingRequests
         public async Task<IActionResult> Index()
         {
             await SyncStatusesAsync();
+            var currentUser = await _userManager.GetUserAsync(User);
+            ViewBag.IsAdmin = currentUser?.Role == "ADMIN";
+            if ((bool)ViewBag.IsAdmin)
+            {
+                ViewBag.Users = new SelectList(
+                    await _context.Users
+                        .OrderBy(u => u.Email)
+                        .Select(u => new { u.Id, DisplayName = $"{u.Email} ({u.Name})" })
+                        .ToListAsync(),
+                    "Id",
+                    "DisplayName");
+            }
             var housingContext = _context.BookingRequests.Include(b => b.Housing).Include(b => b.User);
             return View(await housingContext.ToListAsync());
         }
@@ -296,6 +314,94 @@ namespace HousingInfrastructure.Controllers
                 .ToListAsync();
 
             return View(myBookings);
+        }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> Import()
+        {
+            var adminCheck = await EnsureAdminAccessAsync();
+            if (adminCheck is not null)
+            {
+                return adminCheck;
+            }
+
+            return View("Import");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> Import(IFormFile fileExcel, CancellationToken cancellationToken = default)
+        {
+            var adminCheck = await EnsureAdminAccessAsync();
+            if (adminCheck is not null)
+            {
+                return adminCheck;
+            }
+
+            if (fileExcel is null || fileExcel.Length == 0)
+            {
+                ModelState.AddModelError(string.Empty, "Будь ласка, оберіть Excel-файл для імпорту.");
+                return View();
+            }
+
+            var contentType = NormalizeExcelContentType(fileExcel.ContentType);
+            var importService = _bookingRequestDataPortServiceFactory.GetImportService(contentType);
+            await using var stream = fileExcel.OpenReadStream();
+            await importService.ImportFromStreamAsync(stream, cancellationToken);
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> Export(
+            [FromQuery] string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            [FromQuery] int? userId = null,
+            CancellationToken cancellationToken = default)
+        {
+            var adminCheck = await EnsureAdminAccessAsync();
+            if (adminCheck is not null)
+            {
+                return adminCheck;
+            }
+
+            contentType = NormalizeExcelContentType(contentType);
+            var exportService = userId.HasValue
+                ? new BookingRequestExportService(_context, userId)
+                : _bookingRequestDataPortServiceFactory.GetExportService(contentType);
+            var memoryStream = new MemoryStream();
+
+            await exportService.WriteToAsync(memoryStream, cancellationToken);
+            await memoryStream.FlushAsync(cancellationToken);
+            memoryStream.Position = 0;
+
+            return new FileStreamResult(memoryStream, contentType)
+            {
+                FileDownloadName = userId.HasValue
+                    ? $"booking_report_user_{userId.Value}_{DateTime.UtcNow:yyyyMMdd}.xlsx"
+                    : $"booking_report_{DateTime.UtcNow:yyyyMMdd}.xlsx"
+            };
+        }
+
+        private async Task<IActionResult?> EnsureAdminAccessAsync()
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser?.Role != "ADMIN")
+            {
+                return Forbid();
+            }
+
+            return null;
+        }
+
+        private static string NormalizeExcelContentType(string? contentType)
+        {
+            const string excelContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            return string.IsNullOrWhiteSpace(contentType) || contentType == "application/octet-stream"
+                ? excelContentType
+                : contentType;
         }
     }
 }
