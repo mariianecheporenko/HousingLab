@@ -1,11 +1,21 @@
 ﻿using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Spreadsheet;
 using HousingDomain.Models;
 using Microsoft.EntityFrameworkCore;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Globalization;
 
 namespace HousingInfrastructure.Services;
 
 public class BookingRequestImportService : IImportService<BookingRequest>
 {
+    private static readonly string[] SupportedDateFormats =
+    [
+        "yyyy-MM-dd",
+        "dd.MM.yyyy",
+        "dd/MM/yyyy",
+        "MM/dd/yyyy"
+    ];
     private readonly HousingContext _context;
 
     public BookingRequestImportService(HousingContext context)
@@ -21,38 +31,118 @@ public class BookingRequestImportService : IImportService<BookingRequest>
         }
 
         using var workbook = new XLWorkbook(stream);
+        var validationErrors = new List<string>();
+        var bookingsToImport = new List<BookingRequest>();
 
         foreach (var worksheet in workbook.Worksheets)
         {
             var status = ParseStatus(worksheet.Name);
             foreach (var row in worksheet.RowsUsed().Skip(1))
             {
-                await AddBookingRequestAsync(row, status, cancellationToken);
+                var booking = await BuildBookingRequestAsync(
+                                    row,
+                                    status,
+                                    bookingsToImport,
+                                    validationErrors,
+                                    cancellationToken);
+
+                if (booking is not null)
+                {
+                    bookingsToImport.Add(booking);
+                }
             }
         }
+
+        if (validationErrors.Count > 0)
+        {
+            throw new ImportValidationException(validationErrors);
+        }
+
+        if (bookingsToImport.Count == 0)
+        {
+            return;
+        }
+
+        _context.BookingRequests.AddRange(bookingsToImport);
 
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task AddBookingRequestAsync(IXLRow row, string status, CancellationToken cancellationToken)
+    private async Task<BookingRequest?> BuildBookingRequestAsync(
+           IXLRow row,
+           string status,
+           IReadOnlyCollection<BookingRequest> pendingBookings,
+           ICollection<string> validationErrors,
+           CancellationToken cancellationToken)
     {
         var address = row.Cell(1).GetString().Trim();
+        var rowNumber = row.RowNumber();
         if (string.IsNullOrWhiteSpace(address))
         {
-            return;
+            return null;
         }
 
         if (!DateOnly.TryParse(row.Cell(2).GetString(), out var dateFrom) ||
             !DateOnly.TryParse(row.Cell(3).GetString(), out var dateTo))
         {
-            throw new FormatException($"Невірний формат дат у рядку {row.RowNumber()}.");
+            validationErrors.Add($"Рядок {rowNumber}: невірний формат дат.");
+            return null;
+        }
+
+        if (dateTo < dateFrom)
+        {
+            validationErrors.Add($"Рядок {rowNumber}: дата завершення має бути пізніше дати початку.");
+            return null;
         }
 
         var tenantName = row.Cell(4).GetString().Trim();
         var contacts = row.Cell(5).GetString().Trim();
+        var email = ExtractEmail(contacts);
 
-        var housing = await GetHousingAsync(address, cancellationToken);
-        var user = await GetOrCreateUserAsync(tenantName, contacts, cancellationToken);
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            validationErrors.Add($"Рядок {rowNumber}: не знайдено валідну електронну пошту.");
+            return null;
+        }
+
+        var housing = await _context.Housings.FirstOrDefaultAsync(h => h.Address == address, cancellationToken);
+        if (housing is null)
+        {
+            validationErrors.Add($"Рядок {rowNumber}: житло за адресою \"{address}\" не знайдено.");
+            return null;
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(
+            u => u.Email != null &&
+                 u.Name != null &&
+                 u.Email.ToLower() == email.ToLower() &&
+                 u.Name.ToLower() == tenantName.ToLower(),
+            cancellationToken);
+
+        if (user is null)
+        {
+            validationErrors.Add($"Рядок {rowNumber}: користувача з іменем \"{tenantName}\" та email \"{email}\" не знайдено.");
+            return null;
+        }
+
+        if (!string.Equals(user.UserName, user.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            validationErrors.Add($"Рядок {rowNumber}: для користувача \"{email}\" ім'я користувача має збігатися з поштою.");
+            return null;
+        }
+
+
+        if (housing.OwnerId == user.Id)
+        {
+            validationErrors.Add($"Рядок {rowNumber}: не можна бронювати власне житло.");
+            return null;
+        }
+
+        if (housing.IsAvailable == false)
+        {
+            validationErrors.Add($"Рядок {rowNumber}: житло \"{address}\" недоступне.");
+            return null;
+        }
 
         var exists = await _context.BookingRequests.AnyAsync(b =>
             b.HousingId == housing.Id &&
@@ -63,10 +153,39 @@ public class BookingRequestImportService : IImportService<BookingRequest>
 
         if (exists)
         {
-            return;
+            return null;
         }
 
-        var booking = new BookingRequest
+        var duplicateInBatch = pendingBookings.Any(b =>
+                 b.HousingId == housing.Id &&
+                 b.UserId == user.Id &&
+                 b.DateFrom == dateFrom &&
+                 b.DateTo == dateTo);
+
+        if (duplicateInBatch) {
+            return null;
+        }
+
+
+        var occupiedPlacesInDb = await _context.BookingRequests.CountAsync(
+                    b => b.HousingId == housing.Id &&
+                         b.DateFrom <= dateTo &&
+                         b.DateTo >= dateFrom,
+                    cancellationToken);
+
+        var occupiedPlacesInBatch = pendingBookings.Count(
+            b => b.HousingId == housing.Id &&
+                 b.DateFrom <= dateTo &&
+                 b.DateTo >= dateFrom);
+
+        var maxPlaces = Math.Max(1, housing.Rooms ?? 1);
+        if (occupiedPlacesInDb + occupiedPlacesInBatch >= maxPlaces)
+        {
+            validationErrors.Add($"Рядок {rowNumber}: для житла \"{address}\" немає вільних місць на обрані дати.");
+            return null;
+        }
+
+        return new BookingRequest
         {
             HousingId = housing.Id,
             UserId = user.Id,
@@ -75,65 +194,54 @@ public class BookingRequestImportService : IImportService<BookingRequest>
             Status = status
         };
 
-        _context.BookingRequests.Add(booking);
     }
 
-    private async Task<Housing> GetHousingAsync(string address, CancellationToken cancellationToken)
+
+    private static string? ExtractEmail(string contacts)
     {
-        var housing = await _context.Housings.FirstOrDefaultAsync(h => h.Address == address, cancellationToken);
-        if (housing is not null)
-        {
-            return housing;
-        }
-
-        housing = new Housing
-        {
-            Address = address,
-            IsAvailable = true,
-            Description = "Created from Excel import"
-        };
-
-        _context.Housings.Add(housing);
-        await _context.SaveChangesAsync(cancellationToken);
-        return housing;
-    }
-
-    private async Task<User> GetOrCreateUserAsync(string tenantName, string contacts, CancellationToken cancellationToken)
-    {
-        var email = contacts.Split(',', StringSplitOptions.TrimEntries)
+        return contacts.Split(',', StringSplitOptions.TrimEntries)
             .FirstOrDefault(c => c.Contains('@'));
-
-        User? user = null;
-        if (!string.IsNullOrWhiteSpace(email))
+    }
+    private static bool TryReadDate(IXLCell cell, out DateOnly date)
+    {
+        if (cell.TryGetValue<DateTime>(out var dateTime))
         {
-            user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+            date = DateOnly.FromDateTime(dateTime.Date);
+            return true;
         }
-
-        if (user is not null)
+        if (cell.TryGetValue<double>(out var excelDateValue))
         {
-            return user;
+            try
+            {
+                var excelDate = DateTime.FromOADate(excelDateValue);
+                date = DateOnly.FromDateTime(excelDate.Date);
+                return true;
+            }
+            catch (ArgumentException)
+            {
+                // ignored: continue with string parsing below
+            }
         }
-
-        user = new User
+        var rawValue = cell.GetString().Trim();
+        if (string.IsNullOrWhiteSpace(rawValue))
         {
-            UserName = !string.IsNullOrWhiteSpace(email) ? email : $"imported_{Guid.NewGuid():N}@example.com",
-            Email = !string.IsNullOrWhiteSpace(email) ? email : $"imported_{Guid.NewGuid():N}@example.com",
-            NormalizedEmail = !string.IsNullOrWhiteSpace(email) ? email.ToUpperInvariant() : null,
-            NormalizedUserName = !string.IsNullOrWhiteSpace(email) ? email.ToUpperInvariant() : null,
-            PhoneNumber = contacts,
-            Name = string.IsNullOrWhiteSpace(tenantName) ? "Imported Tenant" : tenantName,
-            BirthDate = new DateOnly(2000, 1, 1),
-            Gender = "Unknown",
-            Role = "USER",
-            WantsToBeOwner = false,
-            IsOwnerApproved = false,
-            EmailConfirmed = !string.IsNullOrWhiteSpace(email)
-        };
-
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return user;
+            date = default;
+            return false;
+        }
+        var cultures = new[] { CultureInfo.InvariantCulture, CultureInfo.GetCultureInfo("uk-UA"), CultureInfo.GetCultureInfo("en-US") };
+        foreach (var culture in cultures)
+        {
+            if (DateOnly.TryParseExact(rawValue, SupportedDateFormats, culture, DateTimeStyles.None, out date))
+            {
+                return true;
+            }
+            if (DateOnly.TryParse(rawValue, culture, DateTimeStyles.None, out date))
+            {
+                return true;
+            }
+        }
+        date = default;
+        return false;
     }
 
     private static string ParseStatus(string worksheetName)

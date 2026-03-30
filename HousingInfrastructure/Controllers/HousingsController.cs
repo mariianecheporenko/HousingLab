@@ -158,8 +158,10 @@ namespace HousingInfrastructure.Controllers
 
         {
             var currentUser = await _userManager.GetUserAsync(User);
+            var isAdmin = currentUser?.Role == "ADMIN";
+            var canCreateAsOwner = currentUser is not null && currentUser.WantsToBeOwner && currentUser.IsOwnerApproved;
 
-            if (currentUser == null || !currentUser.WantsToBeOwner || !currentUser.IsOwnerApproved)
+            if (currentUser == null || (!isAdmin && !canCreateAsOwner))
             {
                 TempData["Error"] = "Тільки підтверджені власники можуть додавати житло.";
                 return RedirectToAction(nameof(Index)); 
@@ -176,25 +178,37 @@ namespace HousingInfrastructure.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]
-        public async Task<IActionResult> Create([Bind("Id,Address,City,Description,PricePerMonth,Rooms")] Housing housing)
+        public async Task<IActionResult> Create([Bind("Id,Address,City,Description,Price,Rooms,Area,IsAvailable")] Housing housing)
         {
             var currentUser = await _userManager.GetUserAsync(User);
+            var isAdmin = currentUser?.Role == "ADMIN";
+            var canCreateAsOwner = currentUser is not null && currentUser.WantsToBeOwner && currentUser.IsOwnerApproved;
 
-            if (currentUser == null || !currentUser.WantsToBeOwner || !currentUser.IsOwnerApproved)
+            if (currentUser == null || (!isAdmin && !canCreateAsOwner))
             {
                 return Forbid();
             }
 
-            housing.OwnerId = currentUser.Id;
+            housing.OwnerId = canCreateAsOwner ? currentUser.Id : null;
 
             ModelState.Remove("OwnerId");
             ModelState.Remove("Owner");
 
             if (ModelState.IsValid)
             {
-                _context.Add(housing);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                try
+                {
+                    _context.Add(housing);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateException)
+                {
+                    ModelState.AddModelError(string.Empty, "Не вдалося зберегти житло. Перевірте, що всі обов'язкові поля заповнені коректно.");
+                }
+                SetCitiesSelectList(housing.City);
+                SetOwnersSelectList(housing.OwnerId);
+
             }
 
             return View(housing);

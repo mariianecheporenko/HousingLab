@@ -6,6 +6,9 @@ namespace HousingInfrastructure.Services;
 
 public class BookingRequestExportService : IExportService<BookingRequest>
 {
+    private const decimal DaysInWeek = 7m;
+    private const decimal WeeksInMonth = 4m;
+
     private static readonly IReadOnlyList<string> HeaderNames =
     [
         "Адреса житла",
@@ -97,9 +100,15 @@ public class BookingRequestExportService : IExportService<BookingRequest>
 
     private static decimal CalculateTotalPrice(BookingRequest booking)
     {
-        var dailyPrice = booking.Housing?.Price ?? 0m;
+        var monthlyPrice = booking.Housing?.Price ?? 0m;
         var days = booking.DateTo.DayNumber - booking.DateFrom.DayNumber + 1;
-        return days > 0 ? dailyPrice * days : 0m;
+        if (days <= 0 || monthlyPrice <= 0)
+        {
+            return 0m;
+        }
+
+        var months = days / (DaysInWeek * WeeksInMonth);
+        return Math.Round(monthlyPrice * months, 2, MidpointRounding.AwayFromZero);
     }
 
     private static string GetTenantContacts(User? user)

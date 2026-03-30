@@ -349,8 +349,18 @@ namespace HousingInfrastructure.Controllers
             var contentType = NormalizeExcelContentType(fileExcel.ContentType);
             var importService = _bookingRequestDataPortServiceFactory.GetImportService(contentType);
             await using var stream = fileExcel.OpenReadStream();
-            await importService.ImportFromStreamAsync(stream, cancellationToken);
-
+            try
+            {
+                await importService.ImportFromStreamAsync(stream, cancellationToken);
+            }
+            catch (ImportValidationException ex)
+            {
+                var message = ex.ValidationErrors.Count == 0
+                    ? "Помилкові дані, що не збігаються із системою."
+                    : $"Помилкові дані, що не збігаються із системою: {string.Join(" ", ex.ValidationErrors)}";
+                ModelState.AddModelError(string.Empty, message);
+                return View();
+            }
             return RedirectToAction(nameof(Index));
         }
 
